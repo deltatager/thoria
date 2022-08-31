@@ -1,5 +1,5 @@
 [package]
-name = "radio-rust"
+name = "thoria"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,5 +8,6 @@ edition = "2021"
 [dependencies]
 dotenv = "0.15.0"
 poise = "0.3.0"
-serenity = { version = "0.11", default-features = false, features = ["client", "gateway", "rustls_backend", "model"]}
+serenity = { version = "0.11", default-features = false, features = ["client", "gateway", "voice", "rustls_backend", "model"]}
+songbird = "0.3.0"
 tokio = { version = "1.20.1", features = ["macros", "rt-multi-thread", "signal"] }

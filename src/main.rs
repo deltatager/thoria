@@ -1,8 +1,10 @@
 mod commands;
 
-use serenity::Error;
+use serenity::{Error};
 use serenity::prelude::GatewayIntents;
 use crate::commands::{age, ping};
+use songbird::SerenityInit;
+use crate::commands::voice::{join, play};
 
 type Context<'a> = poise::Context<'a, Data, Error>;
 
@@ -36,8 +38,7 @@ async fn help(
         ctx,
         command.as_deref(),
         poise::builtins::HelpConfiguration {
-            extra_text_at_bottom: "\
-This is an example bot made to showcase features of my custom Discord bot framework",
+            extra_text_at_bottom: "\nThis is an example bot made to showcase features of my custom Discord bot framework",
             show_context_menu_commands: true,
             ephemeral: false,
             ..Default::default()
@@ -53,29 +54,30 @@ async fn main() {
     let token =
         std::env::var("DISCORD_TOKEN").expect("DISCORD_TOKEN should be provided in the env");
 
-    let framework = poise::Framework::builder()
+    poise::Framework::builder()
+        .client_settings(|b| {b.register_songbird()})
         .options(poise::FrameworkOptions {
-            commands: vec![register(), shutdown(), help(), age(), ping()],
+            commands: vec![register(), shutdown(), help(), age(), ping(), join(), play()],
             ..Default::default()
         })
         .token(token)
         .intents(GatewayIntents::non_privileged())
-        .user_data_setup(move |_ctx, _ready, _framework| {
-            Box::pin(async move {
-                let shard_manager = _framework.shard_manager().clone();
-                tokio::spawn(async move {
-                    tokio::signal::ctrl_c()
-                        .await
-                        .expect("Could not register ctrl+c handler");
-                    println!("Shutting down...");
-                    shard_manager.lock().await.shutdown_all().await;
-                });
+        .user_data_setup(move |_ctx, _ready, _framework| { Box::pin(async move { Ok(Data {}) }) })
+        .build()
+        .await
+        .expect("Error building framework")
+        .start_with(|mut client| async move {
+            let shard_manager = client.shard_manager.clone();
+            tokio::spawn(async move {
+                tokio::signal::ctrl_c()
+                    .await
+                    .expect("Could not register ctrl+c handler");
+                println!("Shutting down...");
+                shard_manager.lock().await.shutdown_all().await;
+            });
 
-                Ok(Data {})
-            })
-        });
-
-    framework.build().await.expect("").start_with(async |client| {
-        client.start()
-    }).await.expect("")
+            client.start().await
+        })
+        .await
+        .expect("Error starting client")
 }

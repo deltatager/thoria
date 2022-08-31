@@ -1,7 +1,13 @@
+pub mod voice;
+
+use serenity::client::bridge::gateway::ShardId;
+use serenity::model::user::User;
+use crate::Context;
+
 #[poise::command(slash_command)]
-async fn age(
+pub async fn age(
     ctx: Context<'_>,
-    #[description = "Selected user"] user: Option<serenity::User>,
+    #[description = "Selected user"] user: Option<User>,
 ) -> Result<(), serenity::Error> {
     let u = user.as_ref().unwrap_or_else(|| ctx.author());
     let response = format!("{}'s account was created at {}", u.name, u.created_at());
@@ -9,7 +15,7 @@ async fn age(
 }
 
 #[poise::command(slash_command)]
-async fn ping(ctx: Context<'_>) -> Result<(), serenity::Error> {
+pub async fn ping(ctx: Context<'_>) -> Result<(), serenity::Error> {
     let latency = ctx
         .framework()
         .shard_manager
@@ -18,7 +24,7 @@ async fn ping(ctx: Context<'_>) -> Result<(), serenity::Error> {
         .runners
         .lock()
         .await
-        .get(&serenity::ShardId(ctx.discord().shard_id))
+        .get(&ShardId(ctx.discord().shard_id))
         .expect("Shard not found")
         .latency
         .map(|d| format!("{:#?}", d))
