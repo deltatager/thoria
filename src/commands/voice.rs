@@ -95,7 +95,7 @@ pub async fn pause(ctx: Context<'_>) -> Result<(), serenity::Error> {
     };
 }
 
-#[poise::command(slash_command)]
+#[poise::command(slash_command, owner_only)]
 pub async fn bitrate(
     ctx: Context<'_>,
     bitrate: i32
@@ -114,4 +114,9 @@ pub async fn bitrate(
     } else {
         ctx.say("Not in a voice channel to play in").await.map(|_| {})
     };
+}
+
+#[poise::command(slash_command)]
+pub async fn queue(ctx: Context<'_>) {
+
 }
