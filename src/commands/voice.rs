@@ -1,5 +1,8 @@
+use hhmmss::Hhmmss;
+use serenity::futures::future::join_all;
 use songbird::driver::Bitrate;
-use crate::Context;
+
+use crate::commands::context::{Context, GetManagerTrait, UserKey};
 
 /// Join your current voice channel
 #[poise::command(slash_command)]
@@ -18,12 +21,14 @@ pub async fn join(ctx: Context<'_>) -> Result<(), serenity::Error> {
         }
     };
 
-    let manager = songbird::get(ctx.discord()).await
-        .expect("Songbird Voice client placed in at initialisation.").clone();
-
+    println!("channel - manager");
+    let manager = songbird::get(ctx.discord()).await.unwrap().clone();
+    println!("manager - handler");
     let _handler = manager.join(guild_id, connect_to).await;
-
-    ctx.say(format!("Joined {}", connect_to.name(ctx.discord().cache.clone()).await.expect(""))).await.map(|_| {})
+    println!("handler - msg");
+    let msg = format!("Joined {}", connect_to.name(ctx.discord().cache.clone()).await.unwrap());
+    println!("msg - say");
+    ctx.say(msg).await.map(|_| {})
 }
 
 /// Play a track from an URL
@@ -33,90 +38,100 @@ pub async fn play(
     #[description = "URL of track to play"]
     track: Option<String>,
 ) -> Result<(), serenity::Error> {
-    let guild_id = ctx.guild().expect("").id;
-    let manager = songbird::get(ctx.discord())
-        .await
-        .unwrap()
-        .clone();
+    let handler_lock = match ctx.get_handler().await {
+        Some(arc) => arc,
+        None => {
+            return ctx.say("Not in a voice channel").await.map(|_| {});
+        }
+    };
+    let mut handler = handler_lock.lock().await;
 
     let url = match track {
-        Some(url) => url,
-        None => {
-            if let Some(handler_lock) = manager.get(guild_id) {
-                let handler = handler_lock.lock().await;
-                handler.queue().resume().ok();
-                return ctx.say("Resumed playing").await.map(|_| {});
-            }
-                return ctx.say("i shat myself").await.map(|_| {});
+        Some(url) => if url.starts_with("http") {
+            url
+        } else {
+            let mut string = "ytsearch:".to_owned();
+            string.push_str(url.as_str());
+            string
         },
+        None => {
+            handler.queue().resume().ok();
+            return ctx.say("Resumed playing").await.map(|_| {});
+        }
     };
 
-    if !url.starts_with("http") {
-        return ctx.say("Must provide a valid URL").await.map(|_| {});
-    }
-
-    return if let Some(handler_lock) = manager.get(guild_id) {
-        let mut handler = handler_lock.lock().await;
-
-        let source = match songbird::ytdl(&url).await {
-            Ok(source) => source,
-            Err(why) => {
-                println!("Err starting source: {:?}", why);
-
-                return ctx.say("Error sourcing ffmpeg").await.map(|_| {});
-            }
-        };
-
-        handler.set_bitrate(Bitrate::Max);
-        let track = handler.enqueue_source(source);
-        track.set_volume(0.33).ok();
-
-        ctx.say("Playing song").await.map(|_| {})
-    } else {
-        ctx.say("Not in a voice channel to play in").await.map(|_| {})
+    let source = match songbird::ytdl(&url).await {
+        Ok(source) => source,
+        Err(why) => {
+            return ctx.say(format!("Err getting source: {:?}", why)).await.map(|_| {});
+        }
     };
+
+    handler.set_bitrate(Bitrate::Max);
+    let track = handler.enqueue_source(source);
+    track.set_volume(0.33).ok();
+    track.typemap().write().await.insert::<UserKey>(ctx.author().clone());
+
+    ctx.say(format!("Playing `{}`", track.metadata().title.clone().unwrap())).await.map(|_| {})
 }
 
 #[poise::command(slash_command)]
 pub async fn pause(ctx: Context<'_>) -> Result<(), serenity::Error> {
-    let guild_id = ctx.guild().expect("").id;
-
-    let manager = songbird::get(ctx.discord())
-        .await
-        .unwrap()
-        .clone();
-
-    return if let Some(handler_lock) = manager.get(guild_id) {
-        let handler = handler_lock.lock().await;
-        handler.queue().pause().ok();
-        ctx.say("Pausing").await.map(|_| {})
-    } else {
-        ctx.say("Not in a voice channel to play in").await.map(|_| {})
+    let handler = match ctx.get_handler().await {
+        Some(arc) => arc,
+        None => {
+            return ctx.say("Not in a voice channel").await.map(|_| {});
+        }
     };
+
+    handler.lock().await.queue().pause().ok();
+    ctx.say("Pausing").await.map(|_| {})
 }
 
-#[poise::command(slash_command, owner_only)]
+#[poise::command(slash_command, owners_only)]
 pub async fn bitrate(
     ctx: Context<'_>,
-    bitrate: i32
+    bitrate: i32,
 ) -> Result<(), serenity::Error> {
-    let guild_id = ctx.guild().expect("").id;
-
-    let manager = songbird::get(ctx.discord())
-        .await
-        .unwrap()
-        .clone();
-
-    return if let Some(handler_lock) = manager.get(guild_id) {
-        let mut handler = handler_lock.lock().await;
-        handler.set_bitrate(Bitrate::BitsPerSecond(bitrate));
-        ctx.say(format!("Changing bitrate to {} bps", bitrate)).await.map(|_| {})
-    } else {
-        ctx.say("Not in a voice channel to play in").await.map(|_| {})
+    let handler = match ctx.get_handler().await {
+        Some(arc) => arc,
+        None => {
+            return ctx.say("Not in a voice channel").await.map(|_| {});
+        }
     };
+
+    handler.lock().await.set_bitrate(Bitrate::BitsPerSecond(bitrate));
+    ctx.say(format!("Changing bitrate to {} bps", bitrate)).await.map(|_| {})
 }
 
+/// Prints the current track queue
 #[poise::command(slash_command)]
-pub async fn queue(ctx: Context<'_>) {
+pub async fn queue(ctx: Context<'_>) -> Result<(), serenity::Error> {
+    let handler = match ctx.get_handler().await {
+        Some(arc) => arc,
+        None => {
+            return ctx.say("Not in a voice channel").await.map(|_| {});
+        }
+    };
 
+    let queue = handler.lock().await.queue().current_queue();
+
+    if queue.len() == 0 {
+        return ctx.say("Queue is empty.").await.map(|_| {});
+    }
+
+    let lines: Vec<_> = queue.iter()
+        .map(|th| async {
+            format!(
+                "{}. [{:#?}] - {} - {}\n",
+                0,
+                th.metadata().duration.clone().unwrap().hhmmss(),
+                th.metadata().title.clone().unwrap(),
+                th.typemap().read().await.get::<UserKey>().unwrap()
+            )
+        })
+        .collect();
+
+    let msg: String = join_all(lines).await.into_iter().collect();
+    ctx.say(msg).await.map(|_| {})
 }

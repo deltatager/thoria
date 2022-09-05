@@ -1,18 +1,9 @@
-pub mod voice;
-
 use serenity::client::bridge::gateway::ShardId;
-use serenity::model::user::User;
-use crate::Context;
 
-#[poise::command(slash_command)]
-pub async fn age(
-    ctx: Context<'_>,
-    #[description = "Selected user"] user: Option<User>,
-) -> Result<(), serenity::Error> {
-    let u = user.as_ref().unwrap_or_else(|| ctx.author());
-    let response = format!("{}'s account was created at {}", u.name, u.created_at());
-    ctx.say(response).await.map(|_|{})
-}
+use context::Context;
+
+pub mod voice;
+pub mod context;
 
 #[poise::command(slash_command)]
 pub async fn ping(ctx: Context<'_>) -> Result<(), serenity::Error> {

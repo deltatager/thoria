@@ -1,12 +1,13 @@
-mod commands;
-
-use serenity::{Error};
+use serenity::Error;
 use serenity::prelude::GatewayIntents;
-use crate::commands::{age, ping};
 use songbird::SerenityInit;
-use crate::commands::voice::{join, play, pause, bitrate};
 
-type Context<'a> = poise::Context<'a, Data, Error>;
+use commands::context::Context;
+
+use crate::commands::ping;
+use crate::commands::voice::{bitrate, join, pause, play, queue};
+
+mod commands;
 
 // User data, which is stored and accessible in all command invocations
 pub struct Data {}
@@ -57,7 +58,7 @@ async fn main() {
     poise::Framework::builder()
         .client_settings(|b| {b.register_songbird()})
         .options(poise::FrameworkOptions {
-            commands: vec![register(), shutdown(), help(), age(), ping(), join(), play(), pause(), bitrate()],
+            commands: vec![register(), shutdown(), help(), ping(), join(), play(), pause(), bitrate(), queue()],
             ..Default::default()
         })
         .token(token)
