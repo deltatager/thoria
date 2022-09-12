@@ -2,11 +2,12 @@ use hhmmss::Hhmmss;
 use serenity::futures::future::join_all;
 use songbird::driver::Bitrate;
 
-use crate::commands::context::{Context, GetManagerTrait, UserKey};
+use crate::context::{Context, GetManagerTrait, UserKey};
 
 /// Join your current voice channel
 #[poise::command(slash_command)]
 pub async fn join(ctx: Context<'_>) -> Result<(), serenity::Error> {
+    ctx.defer().await.ok();
     let guild = ctx.guild().expect("Could not get guild");
     let guild_id = guild.id;
 
@@ -21,13 +22,9 @@ pub async fn join(ctx: Context<'_>) -> Result<(), serenity::Error> {
         }
     };
 
-    println!("channel - manager");
     let manager = songbird::get(ctx.discord()).await.unwrap().clone();
-    println!("manager - handler");
     let _handler = manager.join(guild_id, connect_to).await;
-    println!("handler - msg");
     let msg = format!("Joined {}", connect_to.name(ctx.discord().cache.clone()).await.unwrap());
-    println!("msg - say");
     ctx.say(msg).await.map(|_| {})
 }
 
@@ -38,6 +35,7 @@ pub async fn play(
     #[description = "URL of track to play"]
     track: Option<String>,
 ) -> Result<(), serenity::Error> {
+    ctx.defer().await.ok();
     let handler_lock = match ctx.get_handler().await {
         Some(arc) => arc,
         None => {
@@ -50,7 +48,7 @@ pub async fn play(
         Some(url) => if url.starts_with("http") {
             url
         } else {
-            let mut string = "ytsearch:".to_owned();
+            let mut string = "ytsearch1:".to_owned();
             string.push_str(url.as_str());
             string
         },
@@ -77,6 +75,7 @@ pub async fn play(
 
 #[poise::command(slash_command)]
 pub async fn pause(ctx: Context<'_>) -> Result<(), serenity::Error> {
+    ctx.defer().await.ok();
     let handler = match ctx.get_handler().await {
         Some(arc) => arc,
         None => {
@@ -93,6 +92,7 @@ pub async fn bitrate(
     ctx: Context<'_>,
     bitrate: i32,
 ) -> Result<(), serenity::Error> {
+    ctx.defer().await.ok();
     let handler = match ctx.get_handler().await {
         Some(arc) => arc,
         None => {
@@ -107,6 +107,7 @@ pub async fn bitrate(
 /// Prints the current track queue
 #[poise::command(slash_command)]
 pub async fn queue(ctx: Context<'_>) -> Result<(), serenity::Error> {
+    ctx.defer().await.ok();
     let handler = match ctx.get_handler().await {
         Some(arc) => arc,
         None => {

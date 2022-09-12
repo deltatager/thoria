@@ -10,6 +10,12 @@ async-trait = "0.1.57"
 dotenv = "0.15.0"
 hhmmss = "0.1.0"
 poise = "0.3.0"
-serenity = { version = "0.11", default-features = false, features = ["client", "gateway", "voice", "rustls_backend", "model"]}
-songbird = { version = "0.3.0" , features = ["builtin-queue", "yt-dlp"]}
+serenity = { version = "0.11", default-features = false, features = ["client", "gateway", "voice", "rustls_backend", "model"] }
+songbird = { version = "0.3.0", features = ["builtin-queue", "yt-dlp"] }
 tokio = { version = "1.20.1", features = ["macros", "rt-multi-thread", "signal"] }
+
+[profile.release]
+strip = true
+opt-level = 3
+lto = true
+codegen-units = 1
