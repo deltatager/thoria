@@ -1,7 +1,7 @@
-FROM rust:1.63.0 as build-env
+FROM rust:1.63.0-alpine3.16 as build-env
 WORKDIR /app
 COPY . /app
-RUN apt-get update && apt-get -y install wget build-essential cmake autoconf automake libtool m4 && wget https://bootstrap.pypa.io/get-pip.py
+RUN apk update && apk add musl-dev wget make cmake autoconf automake libtool m4 && wget https://bootstrap.pypa.io/get-pip.py
 RUN cargo build --release
 
 FROM mwader/static-ffmpeg:latest as ffmpeg
