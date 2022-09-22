@@ -3,6 +3,7 @@ use serenity::futures::future::join_all;
 use songbird::driver::Bitrate;
 
 use crate::context::{Context, GetManagerTrait, UserKey};
+use crate::source::ytdl_native;
 
 /// Join your current voice channel
 #[poise::command(slash_command)]
@@ -58,7 +59,7 @@ pub async fn play(
         }
     };
 
-    let source = match songbird::ytdl(&url).await {
+    let source = match ytdl_native(&url).await {
         Ok(source) => source,
         Err(why) => {
             return ctx.say(format!("Err getting source: {:?}", why)).await.map(|_| {});
@@ -85,6 +86,20 @@ pub async fn pause(ctx: Context<'_>) -> Result<(), serenity::Error> {
 
     handler.lock().await.queue().pause().ok();
     ctx.say("Pausing").await.map(|_| {})
+}
+
+#[poise::command(slash_command)]
+pub async fn stop(ctx: Context<'_>) -> Result<(), serenity::Error> {
+    ctx.defer().await.ok();
+    let handler = match ctx.get_handler().await {
+        Some(arc) => arc,
+        None => {
+            return ctx.say("Not in a voice channel").await.map(|_| {});
+        }
+    };
+
+    handler.lock().await.queue().stop();
+    ctx.say("Stopped.").await.map(|_| {})
 }
 
 #[poise::command(slash_command, owners_only)]

@@ -1,11 +1,14 @@
+extern crate core;
+
 use serenity::prelude::GatewayIntents;
 use songbird::SerenityInit;
 
 use crate::commands::{help, ping, register, shutdown};
-use crate::commands::voice::{bitrate, join, pause, play, queue};
+use crate::commands::voice::{bitrate, join, pause, play, queue, stop};
 
 mod commands;
 mod context;
+mod source;
 
 // User data, which is stored and accessible in all command invocations
 pub struct Data {}
@@ -19,7 +22,7 @@ async fn main() {
     poise::Framework::builder()
         .client_settings(|b| {b.register_songbird()})
         .options(poise::FrameworkOptions {
-            commands: vec![register(), shutdown(), help(), ping(), join(), play(), pause(), bitrate(), queue()],
+            commands: vec![register(), shutdown(), help(), ping(), join(), play(), pause(), stop(), bitrate(), queue()],
             ..Default::default()
         })
         .token(token)
