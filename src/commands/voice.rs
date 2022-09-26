@@ -66,7 +66,6 @@ pub async fn play(
         }
     };
 
-    handler.set_bitrate(Bitrate::Max);
     let track = handler.enqueue_source(source);
     track.set_volume(0.33).ok();
     track.typemap().write().await.insert::<UserKey>(ctx.author().clone());

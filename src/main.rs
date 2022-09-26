@@ -9,6 +9,7 @@ use crate::commands::voice::{bitrate, join, pause, play, queue, stop};
 mod commands;
 mod context;
 mod source;
+mod opus_source;
 
 // User data, which is stored and accessible in all command invocations
 pub struct Data {}
